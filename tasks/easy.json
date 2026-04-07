@@ -1,0 +1,37 @@
+{
+  "task_id": "appsec_easy",
+  "difficulty": "easy",
+  "description": "Three unambiguous, textbook AppSec vulnerabilities with a clear optimal action each.",
+  "scenarios": [
+    {
+      "id": "easy_sql_injection",
+      "code_snippet": "def get_user_profile(user_id):\n    conn = get_db_connection()\n    query = f\"SELECT * FROM users WHERE id = '{user_id}'\"\n    result = conn.execute(query)\n    return result.fetchone()",
+      "detected_issue": "SQL Injection: User-controlled input directly interpolated into an SQL query string without parameterization.",
+      "severity": "critical",
+      "context": "Public REST endpoint GET /api/profile?id=<input>. No authentication gate. Database holds PII including SSNs and payment card data.",
+      "is_false_positive": false,
+      "optimal_action": "fix",
+      "explanation": "Textbook SQLi via f-string interpolation. Fix: use parameterized queries — conn.execute('SELECT * FROM users WHERE id = ?', (user_id,))."
+    },
+    {
+      "id": "easy_xss_flask",
+      "code_snippet": "from flask import Flask, request, render_template_string\napp = Flask(__name__)\n\n@app.route('/greet')\ndef greet():\n    name = request.args.get('name', 'World')\n    template = f'<h1>Hello, {name}!</h1>'\n    return render_template_string(template)",
+      "detected_issue": "Cross-Site Scripting (XSS): Unsanitized user input embedded directly into an HTML template string.",
+      "severity": "high",
+      "context": "Public greeting page with no Content-Security-Policy headers. Allows malicious JavaScript execution in victim browsers via crafted URL param.",
+      "is_false_positive": false,
+      "optimal_action": "fix",
+      "explanation": "render_template_string with raw user input allows stored/reflected XSS. Fix: escape(name) or move to a .html template with {{ name }} (Jinja2 auto-escapes)."
+    },
+    {
+      "id": "easy_hardcoded_aws_credentials",
+      "code_snippet": "import boto3\n\nAWS_ACCESS_KEY = 'AKIAIOSFODNN7EXAMPLE'\nAWS_SECRET_KEY = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'\n\ndef upload_report(file_data: bytes, bucket: str) -> bool:\n    client = boto3.client(\n        's3',\n        aws_access_key_id=AWS_ACCESS_KEY,\n        aws_secret_access_key=AWS_SECRET_KEY\n    )\n    client.put_object(Body=file_data, Bucket=bucket)\n    return True",
+      "detected_issue": "Hardcoded AWS Credentials: Live IAM access key and secret embedded in source code.",
+      "severity": "critical",
+      "context": "Production backend microservice. Repository is public on GitHub. Any git-clone or history traversal immediately exposes live keys with S3 write permissions.",
+      "is_false_positive": false,
+      "optimal_action": "fix",
+      "explanation": "Hardcoded secrets in VCS is a P0 finding. Fix: replace with environment variables (os.environ.get) or AWS IAM instance roles. Rotate exposed keys immediately."
+    }
+  ]
+}

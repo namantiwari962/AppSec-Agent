@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openev-project"
+version = "1.0.0"
+description = "AI Security Code Reviewer — AppSec Agent RL Environment for OpenEnv"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core[core]>=0.2.2",
+    "pydantic>=2.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.24.0",
+    "openai>=1.0.0",
+    "python-dotenv",
+    "pyyaml"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "httpx>=0.27.0",
+]
+
+[project.scripts]
+# Enable: uv run --project . server
+server = "server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["server"]
+py-modules = ["models", "inference", "client"]

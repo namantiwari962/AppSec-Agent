@@ -1,0 +1,57 @@
+{
+  "task_id": "appsec_medium",
+  "difficulty": "medium",
+  "description": "Five scenarios mixing real vulnerabilities, false positives, and ambiguous findings requiring careful contextual reasoning.",
+  "scenarios": [
+    {
+      "id": "medium_react_dih_fp",
+      "code_snippet": "import DOMPurify from 'dompurify';\n\nfunction UserBio({ bioHtml }) {\n  const sanitized = DOMPurify.sanitize(bioHtml, {\n    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a'],\n    ALLOWED_ATTR: ['href']\n  });\n  return <div dangerouslySetInnerHTML={{ __html: sanitized }} />;\n}",
+      "detected_issue": "XSS Risk: dangerouslySetInnerHTML used in React component with HTML content from user profile.",
+      "severity": "medium",
+      "context": "User profile bio display in React SPA. DOMPurify 3.x is pinned and audited. Allowlist restricts tags to safe formatting-only elements. href attributes are still present — potential mXSS edge case on older browsers, but site requires modern Chrome/Firefox.",
+      "is_false_positive": true,
+      "optimal_action": "ignore",
+      "explanation": "DOMPurify with a strict allowlist is the well-established pattern. Scanner flagged dangerouslySetInnerHTML generically. False positive — modern DOMPurify mitigates mXSS on supported browsers."
+    },
+    {
+      "id": "medium_pickle_deserialization",
+      "code_snippet": "import pickle\nimport redis\n\nr = redis.Redis(host='cache.internal', port=6379)\n\ndef get_user_session(session_token: str) -> dict:\n    raw = r.get(f'session:{session_token}')\n    if raw:\n        return pickle.loads(raw)  # nosec\n    return {}",
+      "detected_issue": "Insecure Deserialization: pickle.loads() called on data fetched from a shared Redis cache.",
+      "severity": "high",
+      "context": "Session management service. Redis is internal-only but shared across 12 microservices including a third-party analytics plugin. Arbitrary code execution is possible if any service or the cache layer is compromised.",
+      "is_false_positive": false,
+      "optimal_action": "escalate",
+      "explanation": "pickle on attacker-controlled data is RCE. Internal network is not a trust boundary when shared with third-party components. Architectural change required — escalate for redesign with JSON sessions."
+    },
+    {
+      "id": "medium_sqlalchemy_bound_params_fp",
+      "code_snippet": "from sqlalchemy import text\nfrom app.db import session\n\ndef search_products(category: str, max_price: float) -> list:\n    stmt = text(\n        'SELECT id, name, price FROM products '\n        'WHERE category = :cat AND price <= :price'\n    )\n    rows = session.execute(stmt, {'cat': category, 'price': max_price})\n    return rows.fetchall()",
+      "detected_issue": "Potential SQL Injection: sqlalchemy.text() detected with dynamic parameters in query construction.",
+      "severity": "medium",
+      "context": "Product search API. Inputs come from validated query-string parameters (Pydantic schema enforced upstream). Bound parameters (:cat, :price) prevent injection.",
+      "is_false_positive": true,
+      "optimal_action": "ignore",
+      "explanation": "SQLAlchemy text() with named bound params is safe parameterized SQL — equivalent to prepared statements. The SAST tool incorrectly matched 'text()' as a risk indicator. False positive."
+    },
+    {
+      "id": "medium_md5_password_hashing",
+      "code_snippet": "import hashlib\n\ndef create_user(username: str, password: str) -> bool:\n    pwd_hash = hashlib.md5(password.encode('utf-8')).hexdigest()\n    db.execute(\n        'INSERT INTO users (username, pwd_hash) VALUES (?, ?)',\n        (username, pwd_hash)\n    )\n    return True",
+      "detected_issue": "Weak Password Hashing: MD5 used without salt. MD5 is cryptographically broken and rainbow-table searchable.",
+      "severity": "high",
+      "context": "User registration in authentication service. The users table contains 2M records. An attacker with read access to the DB can crack all passwords near-instantly using precomputed rainbow tables.",
+      "is_false_positive": false,
+      "optimal_action": "fix",
+      "explanation": "MD5 for passwords is a P1 finding. Fix: replace with bcrypt (cost >= 12), scrypt, or Argon2id — all include salting and tunable work factors."
+    },
+    {
+      "id": "medium_open_redirect",
+      "code_snippet": "from flask import Flask, request, redirect, session\n\napp = Flask(__name__)\n\n@app.route('/logout')\ndef logout():\n    session.clear()\n    next_url = request.args.get('next', '/')\n    return redirect(next_url)",
+      "detected_issue": "Open Redirect: The 'next' parameter is not validated against an allowlist, allowing redirect to arbitrary external URLs.",
+      "severity": "medium",
+      "context": "Post-logout redirect in a financial web app. Attackers craft logout links like /logout?next=https://evil.com/phish that redirect after a legit authentication flow, reducing victim suspicion.",
+      "is_false_positive": false,
+      "optimal_action": "flag",
+      "explanation": "Open redirect enables phishing. Flag for developer to implement same-origin check: only allow relative URLs or allowlisted domains."
+    }
+  ]
+}
