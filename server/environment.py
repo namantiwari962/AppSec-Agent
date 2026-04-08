@@ -302,10 +302,11 @@ class AppSecEnvironment(Environment):
         )
 
     def compute_final_score(self) -> float:
-        """Return normalized [0.0, 1.0] episode score."""
+        """Return normalized (0.0, 1.0) episode score."""
         if not self.episode_rewards:
-            return 0.0
-        return round(sum(self.episode_rewards) / len(self.episode_rewards), 4)
+            return 0.0001
+        raw_score = sum(self.episode_rewards) / len(self.episode_rewards)
+        return round(max(0.0001, min(0.9999, raw_score)), 4)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
