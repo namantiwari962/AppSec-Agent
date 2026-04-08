@@ -1,0 +1,110 @@
+spec_version: "1.0"
+name: "appsec_code_reviewer"
+type: "space"
+runtime: "fastapi"
+app: "server.app:app"
+port: 8000
+
+metadata:
+  title: "AI Security Code Reviewer (AppSec Agent)"
+  description: >
+    A production-grade Reinforcement Learning environment that simulates a
+    real-world Application Security (AppSec) code review pipeline. An AI agent
+    analyzes code snippets detected by static-analysis tooling and decides
+    the optimal response: ignore false positives, flag for developer attention,
+    auto-fix exploitable vulnerabilities, or escalate critical issues to a
+    human security expert. Rewards penalize over-flagging, missed critical
+    vulnerabilities, loop behavior, and reward efficient, accurate triage.
+  category: "Cybersecurity / AppSec"
+  tags:
+    - appsec
+    - code-review
+    - vulnerability-detection
+    - reinforcement-learning
+    - security-automation
+    - meta-hackathon
+
+tasks:
+  - id: "appsec_easy"
+    difficulty: "easy"
+    description: >
+      Three textbook, unambiguous vulnerability findings (SQL injection, XSS,
+      hardcoded credentials). Clear optimal actions with no conflicting signals.
+    task_file: "tasks/easy.json"
+    max_steps: 3
+
+  - id: "appsec_medium"
+    difficulty: "medium"
+    description: >
+      Five scenarios mixing real vulnerabilities with false positives and partial
+      mitigations. Requires contextual reasoning to avoid over-flagging noise
+      while catching real risks (insecure deserialization, weak hashing, open redirect).
+    task_file: "tasks/medium.json"
+    max_steps: 5
+
+  - id: "appsec_hard"
+    difficulty: "hard"
+    description: >
+      Seven highly ambiguous scenarios: TOCTOU race conditions, bypassable SSRF
+      mitigations, weak JWT secrets, command injection with shell=True, and more.
+      Conflicting signals, false positives embedded in critical-looking findings,
+      and architectural issues that require escalation rather than auto-fix.
+    task_file: "tasks/hard.json"
+    max_steps: 7
+
+env_vars:
+  - name: "HF_TOKEN"
+    required: true
+    description: "HuggingFace API token used as inference key."
+
+  - name: "API_BASE_URL"
+    required: false
+    default: "https://router.huggingface.co/v1"
+    description: "OpenAI-compatible inference endpoint."
+
+  - name: "MODEL_NAME"
+    required: false
+    default: "Qwen/Qwen2.5-72B-Instruct"
+    description: "LLM model name for the agent."
+
+  - name: "TASK_DIFFICULTY"
+    required: false
+    default: "easy"
+    description: "Task difficulty level: easy | medium | hard."
+
+observation_schema:
+  type: "object"
+  fields:
+    - name: code_snippet
+      type: string
+      description: "The code block under review."
+    - name: detected_issue
+      type: string
+      description: "Static analysis finding / vulnerability description."
+    - name: severity
+      type: string
+      enum: [low, medium, high, critical]
+    - name: context
+      type: string
+      description: "Deployment context, exposure level, and risk amplifiers."
+    - name: step_count
+      type: integer
+      description: "Current step within the episode."
+
+action_schema:
+  type: "object"
+  fields:
+    - name: action
+      type: string
+      enum: [ignore, flag, fix, escalate]
+      description: "Agent decision for the current code snippet."
+
+reward_schema:
+  type: "object"
+  fields:
+    - name: value
+      type: float
+      range: [0.0, 1.0]
+    - name: reasoning
+      type: string
+      description: "Deterministic explanation of why this reward was given."
