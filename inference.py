@@ -219,11 +219,11 @@ def main() -> None:
                 log_step(
                     step=steps_taken,
                     action="flag",
-                    reward=0.0,
+                    reward=0.0001,
                     done=True,
                     error=error_msg,
                 )
-                all_rewards.append(0.0)
+                all_rewards.append(0.0001)
                 break
 
         # ── Score computation (INSIDE LOOP) ────────────────────────────────────

@@ -327,7 +327,7 @@ class MyEnvironment(AppSecEnvironment):
         obs = super().reset()
         return AppSecObservationExtended(
             **obs.model_dump(),
-            reward=0.0,
+            reward=0.0001,
             reward_reasoning="Environment reset. Initial state.",
             done=False,
             info={},
