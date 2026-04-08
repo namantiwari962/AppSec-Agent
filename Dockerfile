@@ -1,28 +1,43 @@
+# ── Base image ────────────────────────────────────────────────────────────────
 FROM python:3.10-slim
 
+# Non-root user required by Hugging Face Spaces
+RUN useradd -m -u 1000 user
 WORKDIR /app
 
-# Install uv for fast installation
-RUN pip install uv
+# ── System dependencies ────────────────────────────────────────────────────────
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files first (better Docker layer caching)
+# ── Install uv (fast pip replacement) ─────────────────────────────────────────
+RUN pip install --no-cache-dir uv
+
+# ── Copy dependency files first (maximise Docker layer cache hits) ─────────────
 COPY pyproject.toml .
 COPY server/requirements.txt server/requirements.txt
 
-# Install dependencies using uv
+# ── Create venv and install all project dependencies ──────────────────────────
 RUN uv venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    uv pip install .
+    uv pip install ".[dev]"
 
-# Copy remaining project files
+# ── Copy the rest of the project ───────────────────────────────────────────────
 COPY . .
 
-# Set environment variables for uv and execution
+# ── Configure environment ──────────────────────────────────────────────────────
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Expose the default server port
+# Change ownership to non-root user
+RUN chown -R user:user /app /opt/venv
+USER user
+
+# ── Networking ─────────────────────────────────────────────────────────────────
+# Hugging Face Spaces requires port 7860
 EXPOSE 7860
 
-# Run openenv GUI server by default
-CMD ["python", "gradio_app.py"]
+# ── Launch: unified FastAPI + Gradio server on 0.0.0.0:7860 ───────────────────
+CMD ["python", "app.py"]

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openev-project"
 version = "1.0.0"
-description = "AI Security Code Reviewer — AppSec Agent RL Environment for OpenEnv"
+description = "AI Security Code Reviewer — Unified AppSec Agent for OpenEnv & HF Spaces"
 requires-python = ">=3.10"
 dependencies = [
     "openenv-core[core]>=0.2.2",
@@ -15,21 +15,21 @@ dependencies = [
     "openai>=1.0.0",
     "python-dotenv",
     "pyyaml",
-    "gradio>=4.0.0",
+    "gradio>=4.26.0",
+    "httpx>=0.27.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
-    "httpx>=0.27.0",
 ]
 
 [project.scripts]
-# Enable: uv run --project . server
-server = "server.app:main"
+# Entry point for the unified app
+app = "app:main"
 
 [tool.setuptools]
 include-package-data = true
 packages = ["server"]
-py-modules = ["models", "inference", "client"]
+py-modules = ["models", "inference", "client", "app"]
