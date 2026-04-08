@@ -5,7 +5,7 @@ emoji: 🛡️
 colorFrom: green
 colorTo: blue
 sdk: docker
-app_port: 8000
+app_port: 7860
 pinned: false
 
 ---
@@ -96,10 +96,10 @@ export TASK_DIFFICULTY="easy"     # easy | medium | hard
 uv run server
 
 # Using uvicorn directly
-uvicorn server.app:app --host 0.0.0.0 --port 8000
+uvicorn server.app:app --host 0.0.0.0 --port 7860
 
 # Or directly
-python -m server.app --port 8000
+python -m server.app --port 7860
 ```
 
 ### 4. Run Inference
@@ -132,8 +132,8 @@ docker build -t appsec-env:latest .
 docker run --rm -e HF_TOKEN="hf_..." appsec-env:latest
 
 # Run the server instead of inference
-docker run --rm -p 8000:8000 -e HF_TOKEN="hf_..." appsec-env:latest \
-    uvicorn server.app:app --host 0.0.0.0 --port 8000
+docker run --rm -p 7860:7860 -e HF_TOKEN="hf_..." appsec-env:latest \
+    uvicorn server.app:app --host 0.0.0.0 --port 7860
 ```
 
 ---

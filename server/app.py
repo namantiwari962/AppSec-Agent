@@ -27,7 +27,7 @@ app = create_app(
     max_concurrent_envs=4,
 )
 
-def main(host: str = "0.0.0.0", port: int = 8000) -> None:
+def main(host: str = "0.0.0.0", port: int = 7860) -> None:
     """Entry point for direct execution."""
     import uvicorn
     uvicorn.run(app, host=host, port=port)
@@ -35,7 +35,7 @@ def main(host: str = "0.0.0.0", port: int = 8000) -> None:
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="AppSec Code Reviewer Server")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--port", type=int, default=7860)
     parser.add_argument("--host", type=str, default="0.0.0.0")
     args = parser.parse_args()
     main(host=args.host, port=args.port)

@@ -29,7 +29,7 @@ class AppSecEnv(EnvClient[AppSecAction, AppSecObservationExtended, State]):
     enabling efficient multi-step interactions with lower latency.
 
     Example:
-        >>> with AppSecEnv(base_url="http://localhost:8000") as client:
+        >>> with AppSecEnv(base_url="http://localhost:7860") as client:
         ...     result = client.reset()
         ...     print(result.observation.detected_issue)
         ...     action = AppSecAction(action="fix")
