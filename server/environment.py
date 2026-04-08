@@ -242,7 +242,7 @@ class AppSecEnvironment(Environment):
                 f" [Loop penalty -0.15: action '{act}' repeated {count}x in a row.]"
             )
 
-        final_reward = round(max(0.0, min(1.0, base_reward - loop_penalty)), 4)
+        final_reward = round(max(0.0001, min(0.9999, base_reward - loop_penalty)), 4)
         self.episode_rewards.append(final_reward)
 
         # ── Advance scenario pointer ─────────────────────────────────────────
