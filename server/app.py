@@ -16,6 +16,7 @@ try:
 except ImportError as exc:
     raise ImportError("openenv-core is required. Install with: pip install openenv-core") from exc
 
+from fastapi.responses import RedirectResponse
 from models import MyAction, MyObservation
 from server.environment import MyEnvironment
 
@@ -26,6 +27,11 @@ app = create_app(
     env_name="appsec_code_reviewer",
     max_concurrent_envs=4,
 )
+
+@app.get("/")
+async def root_redirect():
+    """Redirect root to the web UI."""
+    return RedirectResponse(url="/web/")
 
 def main(host: str = "0.0.0.0", port: int = 7860) -> None:
     """Entry point for direct execution."""
