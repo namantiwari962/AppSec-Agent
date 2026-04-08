@@ -322,6 +322,16 @@ class MyEnvironment(AppSecEnvironment):
         difficulty = os.environ.get("TASK_DIFFICULTY", "easy")
         super().__init__(task_difficulty=difficulty)
 
+    def reset(self) -> AppSecObservationExtended:
+        obs = super().reset()
+        return AppSecObservationExtended(
+            **obs.model_dump(),
+            reward=0.0,
+            reward_reasoning="Environment reset. Initial state.",
+            done=False,
+            info={},
+        )
+
     def step(self, action: AppSecAction) -> AppSecObservationExtended:  # type: ignore[override]
 
         # Prevent stepping after episode is done

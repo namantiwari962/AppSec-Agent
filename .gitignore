@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+env/
+openev_project.egg-info/
+.idea/
+.vscode/
