@@ -13,17 +13,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ── Install uv (fast pip replacement) ─────────────────────────────────────────
 RUN pip install --no-cache-dir uv
 
-# ── Copy project configuration first ──────────────────────────────────────────
-COPY pyproject.toml .
+# ── Copy ALL project files first ──────────────────────────────────────────────
+# This ensures that when we install the project, all modules (server, models.py) are present.
+COPY . .
 
 # ── Create venv and install all project dependencies ──────────────────────────
-# Install in-place to use the project metadata
+# We install the current directory (.) including all dependencies defined in pyproject.toml
 RUN uv venv /opt/venv && \
     . /opt/venv/bin/activate && \
     uv pip install --no-cache .
-
-# ── Copy the rest of the project ───────────────────────────────────────────────
-COPY . .
 
 # ── Configure environment ──────────────────────────────────────────────────────
 ENV VIRTUAL_ENV=/opt/venv
