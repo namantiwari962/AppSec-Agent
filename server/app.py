@@ -63,7 +63,7 @@ def handle_reset(difficulty: str):
     _env_session = AppSecEnvironment(task_difficulty=difficulty.lower())
     _last_obs_session = _env_session.reset()
     status = "✅ Environment reset successfully!"
-    reward_info = "Reward: 0.0001 | Done: False"
+    reward_info = "Reward: 0.01 | Done: False"
     return status, reward_info, json.dumps({"observation": _last_obs_session.model_dump()}, indent=2)
 
 def handle_step(action: str):
@@ -177,7 +177,7 @@ Or connect directly:
             gr.Markdown("Submit via pull request on HF Hub:\n`openenv fork namantiwari/appsec-agent --hf`")
         with gr.Column():
             gr.Markdown("### 📖 README")
-            gr.Markdown("**Difficulties:** 🟢 Easy • 🟡 Medium • 🔴 Hard\nRewards range 0.0001 – 0.9999. Final score ≥ 0.60 is success.")
+            gr.Markdown("**Difficulties:** 🟢 Easy • 🟡 Medium • 🔴 Hard\nRewards range 0.01 – 0.99. Final score ≥ 0.60 is success.")
 
     with gr.Accordion("🔍 AI Security Audit (LLM Agent)", open=False):
         with gr.Row():

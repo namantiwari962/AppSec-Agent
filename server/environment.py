@@ -41,7 +41,7 @@ from models import (
 REWARD_TABLE: Dict[Tuple[str, bool, str], Tuple[float, str]] = {
     # ── CRITICAL — Real vulnerability ─────────────────────────────────────────
     ("critical", False, "escalate"): (
-        1.00, "Optimal: Critical vulnerability correctly escalated to human security team.",
+        0.99, "Optimal: Critical vulnerability correctly escalated to human security team.",
     ),
     ("critical", False, "fix"): (
         0.70, "Partial: Auto-fix applied, but critical issues demand human oversight — escalate first.",
@@ -50,11 +50,11 @@ REWARD_TABLE: Dict[Tuple[str, bool, str], Tuple[float, str]] = {
         0.20, "Insufficient: Critical vulnerability merely flagged; must be escalated immediately.",
     ),
     ("critical", False, "ignore"): (
-        0.00, "CRITICAL FAILURE: Ignored a critical vulnerability — catastrophic breach risk.",
+        0.01, "CRITICAL FAILURE: Ignored a critical vulnerability — catastrophic breach risk.",
     ),
     # ── CRITICAL — False positive ─────────────────────────────────────────────
     ("critical", True, "ignore"): (
-        1.00, "Optimal: Correctly identified false positive, avoided wasteful escalation.",
+        0.99, "Optimal: Correctly identified false positive, avoided wasteful escalation.",
     ),
     ("critical", True, "flag"): (
         0.30, "Over-reaction: Flagged a false positive — unnecessary developer distraction.",
@@ -63,11 +63,11 @@ REWARD_TABLE: Dict[Tuple[str, bool, str], Tuple[float, str]] = {
         0.10, "Resource waste: Applied fix to a non-existent vulnerability.",
     ),
     ("critical", True, "escalate"): (
-        0.00, "Worst outcome: Escalated a false positive — maximum disruption to security team.",
+        0.01, "Worst outcome: Escalated a false positive — maximum disruption to security team.",
     ),
     # ── HIGH — Real vulnerability ──────────────────────────────────────────────
     ("high", False, "fix"): (
-        1.00, "Optimal: High-severity vulnerability efficiently auto-remediated.",
+        0.99, "Optimal: High-severity vulnerability efficiently auto-remediated.",
     ),
     ("high", False, "escalate"): (
         0.65, "Acceptable: Escalated instead of fixing — valid but slightly less efficient.",
@@ -76,11 +76,11 @@ REWARD_TABLE: Dict[Tuple[str, bool, str], Tuple[float, str]] = {
         0.40, "Insufficient: Flagged but not resolved; high-severity requires fix or escalation.",
     ),
     ("high", False, "ignore"): (
-        0.00, "FAILURE: High-severity vulnerability ignored — serious exploitation risk.",
+        0.01, "FAILURE: High-severity vulnerability ignored — serious exploitation risk.",
     ),
     # ── HIGH — False positive ─────────────────────────────────────────────────
     ("high", True, "ignore"): (
-        1.00, "Optimal: False positive correctly dismissed — no wasted cycles.",
+        0.99, "Optimal: False positive correctly dismissed — no wasted cycles.",
     ),
     ("high", True, "flag"): (
         0.40, "Minor noise: Unnecessary flag for a non-issue — some developer time lost.",
@@ -89,11 +89,11 @@ REWARD_TABLE: Dict[Tuple[str, bool, str], Tuple[float, str]] = {
         0.15, "Resource waste: Fix applied to non-existent high-severity issue.",
     ),
     ("high", True, "escalate"): (
-        0.00, "Escalation abuse: Human reviewer time wasted on a false positive.",
+        0.01, "Escalation abuse: Human reviewer time wasted on a false positive.",
     ),
     # ── MEDIUM — Real vulnerability ────────────────────────────────────────────
     ("medium", False, "flag"): (
-        1.00, "Optimal: Medium-severity issue correctly flagged for developer review.",
+        0.99, "Optimal: Medium-severity issue correctly flagged for developer review.",
     ),
     ("medium", False, "fix"): (
         0.75, "Good: Proactive fix applied; flag would be sufficient but fix is acceptable.",
@@ -106,7 +106,7 @@ REWARD_TABLE: Dict[Tuple[str, bool, str], Tuple[float, str]] = {
     ),
     # ── MEDIUM — False positive ────────────────────────────────────────────────
     ("medium", True, "ignore"): (
-        1.00, "Optimal: Correctly identified false positive — no alert fatigue introduced.",
+        0.99, "Optimal: Correctly identified false positive — no alert fatigue introduced.",
     ),
     ("medium", True, "flag"): (
         0.50, "Mild noise: Medium false positive flagged — minor developer distraction.",
@@ -132,7 +132,7 @@ REWARD_TABLE: Dict[Tuple[str, bool, str], Tuple[float, str]] = {
     ),
     # ── LOW — False positive ───────────────────────────────────────────────────
     ("low", True, "ignore"): (
-        1.00, "Optimal: Low-severity false positive correctly dismissed.",
+        0.99, "Optimal: Low-severity false positive correctly dismissed.",
     ),
     ("low", True, "flag"): (
         0.60, "Minor noise: Low-severity false positive flagged — negligible impact.",
@@ -242,7 +242,7 @@ class AppSecEnvironment(Environment):
                 f" [Loop penalty -0.15: action '{act}' repeated {count}x in a row.]"
             )
 
-        final_reward = round(max(0.0001, min(0.9999, base_reward - loop_penalty)), 4)
+        final_reward = round(max(0.01, min(0.99, base_reward - loop_penalty)), 4)
         self.episode_rewards.append(final_reward)
 
         # ── Advance scenario pointer ─────────────────────────────────────────
@@ -304,9 +304,9 @@ class AppSecEnvironment(Environment):
     def compute_final_score(self) -> float:
         """Return normalized (0.0, 1.0) episode score."""
         if not self.episode_rewards:
-            return 0.0001
+            return 0.01
         raw_score = sum(self.episode_rewards) / len(self.episode_rewards)
-        return round(max(0.0001, min(0.9999, raw_score)), 4)
+        return round(max(0.01, min(0.99, raw_score)), 4)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -327,7 +327,7 @@ class MyEnvironment(AppSecEnvironment):
         obs = super().reset()
         return AppSecObservationExtended(
             **obs.model_dump(),
-            reward=0.0001,
+            reward=0.01,
             reward_reasoning="Environment reset. Initial state.",
             done=False,
             info={},

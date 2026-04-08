@@ -29,7 +29,7 @@ class AppSecAction(BaseModel):
 
 class AppSecReward(BaseModel):
     """Reward signal with human-readable reasoning for transparency."""
-    value: float = Field(..., description="Reward value normalized to [0.0001, 0.9999].")
+    value: float = Field(..., description="Reward value normalized to [0.01, 0.99].")
     reasoning: str = Field(..., description="Explanation of why this reward was assigned.")
 
 
