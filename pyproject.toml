@@ -27,9 +27,9 @@ dev = [
 
 [project.scripts]
 # Entry point for the unified app
-app = "app:main"
+app = "server.app:main"
 
 [tool.setuptools]
 include-package-data = true
 packages = ["server"]
-py-modules = ["models", "inference", "client", "app"]
+py-modules = ["models", "inference", "client"]

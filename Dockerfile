@@ -8,14 +8,13 @@ WORKDIR /app
 # ── System dependencies ────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/lists/*
 
 # ── Install uv (fast pip replacement) ─────────────────────────────────────────
 RUN pip install --no-cache-dir uv
 
 # ── Copy dependency files first (maximise Docker layer cache hits) ─────────────
 COPY pyproject.toml .
-COPY server/requirements.txt server/requirements.txt
 
 # ── Create venv and install all project dependencies ──────────────────────────
 RUN uv venv /opt/venv && \
@@ -40,4 +39,4 @@ USER user
 EXPOSE 7860
 
 # ── Launch: unified FastAPI + Gradio server on 0.0.0.0:7860 ───────────────────
-CMD ["python", "app.py"]
+CMD ["python", "server/app.py"]
