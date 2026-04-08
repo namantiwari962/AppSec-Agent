@@ -8,18 +8,19 @@ WORKDIR /app
 # ── System dependencies ────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    && rm -rf /var/lib/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 # ── Install uv (fast pip replacement) ─────────────────────────────────────────
 RUN pip install --no-cache-dir uv
 
-# ── Copy dependency files first (maximise Docker layer cache hits) ─────────────
+# ── Copy project configuration first ──────────────────────────────────────────
 COPY pyproject.toml .
 
 # ── Create venv and install all project dependencies ──────────────────────────
+# Install in-place to use the project metadata
 RUN uv venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    uv pip install ".[dev]"
+    uv pip install --no-cache .
 
 # ── Copy the rest of the project ───────────────────────────────────────────────
 COPY . .
@@ -38,5 +39,6 @@ USER user
 # Hugging Face Spaces requires port 7860
 EXPOSE 7860
 
-# ── Launch: unified FastAPI + Gradio server on 0.0.0.0:7860 ───────────────────
+# ── Launch ───────────────────────────────────────────────────────────────────
+# Run from the restored path
 CMD ["python", "server/app.py"]
