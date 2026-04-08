@@ -26,7 +26,6 @@ dev = [
 ]
 
 [project.scripts]
-# Entry point for the unified app
 server = "server.app:main"
 
 [tool.setuptools]
