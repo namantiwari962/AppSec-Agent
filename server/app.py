@@ -1,8 +1,9 @@
 """
-server/app.py — AppSec Agent: Structural Restoration (Unified Server)
+server/app.py — AppSec Agent: Unified Server (Structural Restoration)
 ====================================================================
 Unified FastAPI + Gradio entry point moved back to the server/ directory.
-Includes robust path handling and global environment variables.
+Aesthetics: 1:1 Match with User Screenshot.
+Technical: Fixed 500 errors and pathing.
 """
 
 import os
@@ -13,18 +14,22 @@ import threading
 from pathlib import Path
 from typing import Generator, Optional, List
 
-# ── sys.path bootstrap (CRITICAL) ──────────────────────────────────────────────
-# Ensure the root directory is on sys.path so 'from models import ...' works 
-# when app.py is inside the 'server/' directory.
+# ── sys.path bootstrap ─────────────────────────────────────────────────────────
+# Crucial for finding root-level modules like models.py
 _PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
-# ── Global Configuration (Fixes 500 errors) ──────────────────────────────────
-from openai import OpenAI
+# ── Global Environment Variables (Fixes 500 Errors) ──────────────────────────
+# Defined globally as requested by the user
 MODEL_NAME: str = os.environ.get("MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
 API_BASE_URL: str = os.environ.get("API_BASE_URL", "https://router.huggingface.co/v1")
 HF_TOKEN: str = os.environ.get("HF_TOKEN", "")
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None # Fallback handled in audit function
 
 # ── FastAPI / OpenEnv Backend ──────────────────────────────────────────────────
 try:
@@ -34,9 +39,11 @@ except ImportError as exc:
 
 from fastapi import FastAPI
 from models import MyAction, MyObservation
+# Use absolute import relative to root (since root is in sys.path)
 from server.environment import MyEnvironment, AppSecEnvironment
 from models import AppSecAction
 
+# Initialize the OpenEnv backend app
 app: FastAPI = create_app(
     MyEnvironment,
     MyAction,
@@ -45,48 +52,48 @@ app: FastAPI = create_app(
     max_concurrent_envs=4,
 )
 
-# ── Gradio Business Logic ──────────────────────────────────────────────────────
+# ── Gradio Logic ───────────────────────────────────────────────────────────────
 import gradio as gr
 
-_env: Optional[AppSecEnvironment] = None
-_last_obs = None
+_env_session: Optional[AppSecEnvironment] = None
+_last_obs_session = None
 
 def handle_reset(difficulty: str):
-    global _env, _last_obs
-    _env = AppSecEnvironment(task_difficulty=difficulty.lower())
-    _last_obs = _env.reset()
+    global _env_session, _last_obs_session
+    _env_session = AppSecEnvironment(task_difficulty=difficulty.lower())
+    _last_obs_session = _env_session.reset()
     status = "✅ Environment reset successfully!"
     reward_info = "Reward: 0.0000 | Done: False"
-    return status, reward_info, json.dumps({"observation": _last_obs.model_dump()}, indent=2)
+    return status, reward_info, json.dumps({"observation": _last_obs_session.model_dump()}, indent=2)
 
 def handle_step(action: str):
-    global _env, _last_obs
-    if _env is None: return "⚠️ Please Reset first!", "", "{}"
+    global _env_session, _last_obs_session
+    if _env_session is None: return "⚠️ Please Reset first!", "", "{}"
     try:
         action_obj = AppSecAction(action=action.lower())
-        _last_obs, reward, done, info = _env.step(action_obj)
+        _last_obs_session, reward, done, info = _env_session.step(action_obj)
         status = f"✅ Step complete! {'🏁 Done!' if done else ''}"
         reward_info = f"Reward: {reward.value:.4f} | Done: {done}"
-        return status, reward_info, json.dumps({"observation": _last_obs.model_dump(), "reward": reward.value, "done": done, "info": info}, indent=2)
+        return status, reward_info, json.dumps({"obs": _last_obs_session.model_dump(), "reward": reward.value, "done": done}, indent=2)
     except Exception as e:
         return f"❌ Error: {str(e)}", "", "{}"
 
 def handle_get_state():
-    global _env, _last_obs
-    if _env is None or _last_obs is None: return "⚠️ No session.", "", "{}"
-    return "✅ State retrieved!", f"Steps: {_last_obs.step_count}", json.dumps({"observation": _last_obs.model_dump()}, indent=2)
+    global _env_session, _last_obs_session
+    if _env_session is None or _last_obs_session is None: return "⚠️ No session.", "", "{}"
+    return "✅ State retrieved!", f"Step: {_last_obs_session.step_count}", json.dumps({"obs": _last_obs_session.model_dump()}, indent=2)
 
 def run_security_audit(difficulty: str, user_token: str) -> Generator[str, None, None]:
     log_queue = queue.Queue(); accumulated = []
-    
     def _run():
         token = user_token.strip() or HF_TOKEN
         if not token:
-            log_queue.put("❌ ERROR: HF_TOKEN is required. Set it in the textbox or as a Secret.\n")
-            log_queue.put("__DONE__")
-            return
-        
-        # Use globally imported OpenAI and constants
+            log_queue.put("❌ ERROR: HF_TOKEN is required.\n")
+            log_queue.put("__DONE__"); return
+        if OpenAI is None:
+            log_queue.put("❌ ERROR: OpenAI library not found.\n")
+            log_queue.put("__DONE__"); return
+            
         client = OpenAI(base_url=API_BASE_URL, api_key=token)
         tasks = [difficulty.lower()] if difficulty.lower() != "all" else ["easy", "medium", "hard"]
         
@@ -110,8 +117,7 @@ def run_security_audit(difficulty: str, user_token: str) -> Generator[str, None,
                     obs, reward, done, _ = env.step(AppSecAction(action=act_str))
                     log_queue.put(f"[STEP] step={step} action={act_str} reward={reward.value:.4f} done={str(done).lower()}\n")
                 except Exception as e:
-                    log_queue.put(f"ERROR: {str(e)}\n")
-                    break
+                    log_queue.put(f"ERROR: {str(e)}\n"); break
             log_queue.put(f"[END] score={env.compute_final_score():.4f}\n\n")
         log_queue.put("__DONE__")
 
@@ -120,16 +126,9 @@ def run_security_audit(difficulty: str, user_token: str) -> Generator[str, None,
     while True:
         line = log_queue.get()
         if line == "__DONE__": break
-        accumulated.append(line)
-        yield "".join(accumulated)
+        accumulated.append(line); yield "".join(accumulated)
 
-# ── UI Blocks (Premium Screenshot Match) ──────────────────────────────────────
-
-DESCRIPTION_MD = """
-# 🛡️ AppSec Agent — AI Security Code Reviewer
-An **OpenEnv-compatible** Reinforcement Learning environment for Application Security. The agent reviews code snippets and decides the optimal security action: `ignore` • `flag` • `fix` • `escalate`
----
-"""
+# ── UI Aesthetics (Original Screenshot Match) ──────────────────────────────────
 
 with gr.Blocks(
     title="AppSec Agent — AI Security Code Reviewer",
@@ -138,11 +137,12 @@ with gr.Blocks(
     .container { max-width: 1100px; margin: auto; }
     .json-output { font-family: 'Courier New', monospace; font-size: 13px; background: #0b1117 !important; }
     .reward-badge { font-weight: bold; color: #22c55e; font-size: 15px; }
-    .audit-log { font-family: 'Courier New', monospace; font-size: 11px; background: #0d1117; color: #58a6ff; }
+    .status-box { background: #1a1e26; border: 1px solid #30363d; padding: 10px; border-radius: 6px; }
     footer { display: none !important; }
     """
 ) as demo:
-    gr.Markdown(DESCRIPTION_MD)
+    gr.Markdown("# 🛡️ AppSec Agent — AI Security Code Reviewer")
+    gr.Markdown("An **OpenEnv-compatible** Reinforcement Learning environment for Application Security. The agent reviews code snippets and decides the optimal security action: `ignore` • `flag` • `fix` • `escalate`")
 
     with gr.Accordion("🔗 Connect to this environment", open=True):
         gr.Markdown("""
@@ -151,12 +151,11 @@ from openenv.core import MyEnvAction, MyEnvObservation
 with MyEnvClient(base_url="https://namantiwari-appsec-agent.hf.space") as env:
     result = await env.reset()
 ```
-Or connect directly:
+Or connect directly:  
 `env = MyEnvClient(base_url="https://namantiwari-appsec-agent.hf.space")`
 """)
 
     with gr.Row():
-        # Left Panel
         with gr.Column(scale=1):
             gr.Markdown("### ⚡ Quick Start")
             diff_dd = gr.Dropdown(choices=["Easy", "Medium", "Hard"], value="Easy", label="Task Difficulty")
@@ -168,7 +167,6 @@ Or connect directly:
             reward_disp = gr.Markdown("**Reward:** N/A | **Done:** False", elem_classes=["reward-badge"])
             status_disp = gr.Textbox(label="Status", value="Ready.", interactive=False, lines=2)
 
-        # Right Panel
         with gr.Column(scale=1):
             gr.Markdown("### 📋 Raw JSON Response")
             json_out = gr.Code(label="", language="json", interactive=False, lines=15, elem_classes=["json-output"])
@@ -184,22 +182,21 @@ Or connect directly:
     with gr.Accordion("🔍 AI Security Audit (LLM Agent)", open=False):
         with gr.Row():
             with gr.Column(scale=1):
-                a_token = gr.Textbox(label="🔑 HF_TOKEN", placeholder="hf_...", type="password")
+                a_token = gr.Textbox(label="HF_TOKEN", placeholder="hf_...", type="password")
                 a_diff = gr.Dropdown(choices=["easy", "medium", "hard", "all"], value="easy", label="Difficulty")
                 btn_audit = gr.Button("🚀 Run Audit", variant="primary")
             with gr.Column(scale=2):
-                a_logs = gr.Textbox(label="📡 Live Logs", lines=12, interactive=False, elem_classes=["audit-log"])
+                a_logs = gr.Textbox(label="Audit Logs", lines=10, interactive=False)
 
-    # Event Bindings
     btn_reset.click(handle_reset, [diff_dd], [status_disp, reward_disp, json_out])
     btn_step.click(handle_step, [act_dd], [status_disp, reward_disp, json_out])
     btn_state.click(handle_get_state, [], [status_disp, reward_disp, json_out])
     btn_audit.click(run_security_audit, [a_diff, a_token], [a_logs])
 
-# ── MOUNT AT ROOT ──────────────────────────────────────────────────────────────
+# ── MOUNT GRADIO LAST ──────────────────────────────────────────────────────────
+# Mounting at root / ensures immediate accessibility on HF Spaces
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     import uvicorn
-    # Important: bind to 0.0.0.0 for HF Spaces
     uvicorn.run(app, host="0.0.0.0", port=7860)

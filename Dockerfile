@@ -14,11 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir uv
 
 # ── Copy ALL project files first ──────────────────────────────────────────────
-# This ensures that when we install the project, all modules (server, models.py) are present.
 COPY . .
 
 # ── Create venv and install all project dependencies ──────────────────────────
-# We install the current directory (.) including all dependencies defined in pyproject.toml
 RUN uv venv /opt/venv && \
     . /opt/venv/bin/activate && \
     uv pip install --no-cache .
