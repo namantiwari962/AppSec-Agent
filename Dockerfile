@@ -22,7 +22,7 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Expose the default server port
-EXPOSE 8000
+EXPOSE 7860
 
-# Run inference script by default
-CMD ["python", "inference.py"]
+# Run openenv GUI server by default
+CMD ["python", "server/app.py", "--port", "7860"]
