@@ -27,7 +27,7 @@ dev = [
 
 [project.scripts]
 # Entry point for the unified app
-app = "server.app:main"
+server = "server.app:main"
 
 [tool.setuptools]
 include-package-data = true
