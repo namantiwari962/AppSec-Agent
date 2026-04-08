@@ -19,7 +19,6 @@ Output format (exact, no deviation):
 
 import os
 import sys
-import time
 from typing import List, Optional
 from pathlib import Path
 
@@ -116,7 +115,6 @@ def parse_action(llm_response: str) -> str:
 
 def call_llm(client: OpenAI, obs_prompt: str) -> str:
     """Call the LLM and return the raw text response."""
-    # Note: Using the provided MODEL_NAME (default or env variable)
     response = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
@@ -228,7 +226,7 @@ def main() -> None:
                 all_rewards.append(0.0)
                 break
 
-        # ── Score computation (INSIDE FOR LOOP) ────────────────────────────────────
+        # ── Score computation (INSIDE LOOP) ────────────────────────────────────
         final_score: float = env.compute_final_score()
         success: bool = final_score >= 0.60
 
@@ -238,11 +236,6 @@ def main() -> None:
             score=final_score,
             rewards=all_rewards,
         )
-
-    # ── Keep alive loop ──────────────────────────────────────────────────────────
-    print("\n[FINISH] All tasks done. Keeping container alive...", flush=True)
-    while True:
-        time.sleep(3600)
 
 
 if __name__ == "__main__":
