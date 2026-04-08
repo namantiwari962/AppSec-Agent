@@ -25,4 +25,4 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 EXPOSE 7860
 
 # Run openenv GUI server by default
-CMD ["python", "server/app.py", "--port", "7860"]
+CMD ["python", "gradio_app.py"]
