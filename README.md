@@ -1,3 +1,15 @@
+---
+
+title: AppSec Agent
+emoji: 🛡️
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 8000
+pinned: false
+
+---
+
 # AI Security Code Reviewer — AppSec Agent RL Environment
 
 > A production-grade **Reinforcement Learning environment** built on the
