@@ -115,9 +115,9 @@ and prints structured logs in the strict OpenEnv format:
 [START]
 # task=appsec-code-review-easy env=appsec-openenv-v1 model=Qwen/Qwen2.5-7B-Instruct
 [STEP] step=1 action=fix reward=0.8500 done=false error=null
-[STEP] step=2 action=escalate reward=1.0000 done=false error=null
-[STEP] step=3 action=ignore reward=1.0000 done=true error=null
-[END] success=true steps=3 score=0.9500 rewards=0.8500,1.0000,1.0000
+[STEP] step=2 action=escalate reward=0.9999 done=false error=null
+[STEP] step=3 action=ignore reward=0.9999 done=true error=null
+[END] success=true steps=3 score=0.9499 rewards=0.8500,0.9999,0.9999
 ```
 
 ---
